@@ -1,4 +1,4 @@
-"""Dependency-free static site builder. Production URLs come from GitHub Pages."""
+"""Build production pages for RentSplit Guide; use preview.py for local previews."""
 from __future__ import annotations
 
 import argparse
@@ -13,6 +13,7 @@ from content import GUIDES, RESOURCES
 
 PROJECT = Path(__file__).resolve().parent
 SITE_NAME = "RentSplit Guide"
+PRODUCTION_URL = "https://rent-split-resources.github.io"
 SITE_URL = ""
 BASE = "/"
 OUT = PROJECT / "_site"
@@ -209,7 +210,7 @@ def build(site_url: str, verification: str = "", output: Path | None = None) -> 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--site-url', default='http://localhost:8000', help='Public site URL, including the GitHub repository path; defaults to local preview.')
+    parser.add_argument('--site-url', default=PRODUCTION_URL, help='Public site URL; defaults to https://rent-split-resources.github.io. Use preview.py for a local preview.')
     parser.add_argument('--verification', default='', help='Google Search Console HTML meta tag content value (optional).')
     parser.add_argument('--output', type=Path, default=PROJECT / '_site')
     args = parser.parse_args()

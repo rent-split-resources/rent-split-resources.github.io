@@ -4,6 +4,8 @@ A complete static website for GitHub Pages: a simple two-field rent calculator, 
 
 The site has ten indexable pages plus a custom 404. HTML is generated before deployment, so the guides, navigation, and external links are available without JavaScript. There are no runtime frameworks, external font requests, analytics, accounts, or package dependencies for the build.
 
+Production website: **https://rent-split-resources.github.io/**. Run `python build.py` to generate production HTML in `_site`. The default build no longer uses localhost. For the prepared GitHub upload, follow [DEPLOY-NOW.md](DEPLOY-NOW.md).
+
 ## Preview on your computer
 
 Requires Python 3.12 or newer. In this project's folder, run:
@@ -14,23 +16,23 @@ python preview.py
 
 Open **http://localhost:8000**. Stop the server with Ctrl+C. For a different port, run `python preview.py --port 8001`.
 
-Do not publish the local preview build: it intentionally uses localhost in its canonical URLs. The included GitHub workflow generates production URLs automatically.
+The preview is generated in `.preview/local-site`, with localhost URLs for local use. It does not overwrite the production `_site` folder. Publish the production build or use the included GitHub workflow.
 
 ## Publish to GitHub Pages
 
-1. Create a GitHub repository, for example `rent-split-resources`, with a `main` branch. A public repository is the straightforward option for free GitHub Pages hosting.
-2. Upload **the contents of this folder** to the repository root. Include the hidden `.github/workflows/deploy.yml` file. Do not upload the generated `_site`, `.preview`, or `__pycache__` folders.
+1. Open the repository that publishes `https://rent-split-resources.github.io/`.
+2. Upload the contents of the prepared `UPLOAD-TO-GITHUB` folder to the repository root, or extract `rent-split-resources-upload.zip` and upload its contents. The package includes source and corrected production HTML. Use `COPY-WORKFLOW.txt` to replace the existing `.github/workflows/static.yml` through GitHub's file editor if hidden folders cannot be uploaded. See [DEPLOY-NOW.md](DEPLOY-NOW.md).
 3. Open the repository's **Settings → Pages**. Under **Build and deployment**, choose **GitHub Actions** as the source.
 4. Open **Actions → Build and deploy GitHub Pages → Run workflow**, and run it on `main`. Future pushes to `main` rebuild and deploy automatically.
-5. Open the published URL shown by the deployment. It will usually be `https://YOUR-USERNAME.github.io/rent-split-resources/`.
+5. Open **https://rent-split-resources.github.io/** after the deployment succeeds. Leave **Custom domain** empty.
 
-The `configure-pages` action reads your actual Pages address, including the repository subdirectory or a configured custom domain. The build uses that address for canonical links, internal URLs, Open Graph metadata, structured data, and the sitemap. No placeholder username is shipped to production. If you change the domain or repository URL, rerun the workflow.
+The workflow explicitly builds for `https://rent-split-resources.github.io`, checks the production output, and uploads only `_site`. This corrects canonical links, Open Graph URLs, structured data, the sitemap, and the robots.txt sitemap reference. If the public address changes again, update `PRODUCTION_URL` in `build.py` and `SITE_URL` in the workflow, then rebuild and redeploy.
 
 If you use a default branch other than `main`, update `on.push.branches` in the workflow. Uploading only `build.py` or choosing “Deploy from a branch” will not build this project; use the included GitHub Actions workflow.
 
 ## Google Search Console: verify, submit, inspect
 
-For a standard GitHub project address, create a **URL-prefix property** containing the exact published URL, including `https://` and the repository directory. A Domain property requires DNS control; you cannot verify ownership of `github.io` itself. For a custom domain you own, DNS verification is an option.
+Create a **URL-prefix property** for `https://rent-split-resources.github.io/`. A Domain property requires DNS control; you cannot verify ownership of `github.io` itself. For a custom domain you own, DNS verification is an option.
 
 ### HTML-tag verification
 
@@ -44,7 +46,7 @@ For a standard GitHub project address, create a **URL-prefix property** containi
 Submit the **published site's** sitemap under Search Console's **Sitemaps** section:
 
 ```text
-https://YOUR-USERNAME.github.io/YOUR-REPOSITORY/sitemap.xml
+https://rent-split-resources.github.io/sitemap.xml
 ```
 
 The sitemap contains the homepage, guide index, six guides, resource library, and about page. It deliberately excludes the 404 and all external URLs. You do not own those external pages through your GitHub Pages property.
@@ -62,9 +64,9 @@ After a successful live test, use **Request indexing** where Search Console offe
 
 The `/resources/` page supplies ordinary crawlable links to all 23 external pages; those links have no `nofollow` attribute. They support discovery but cannot override an external host's robots rules, `noindex`, login requirement, canonical, or availability. Only request inspection for external URLs through a separately verified property that covers them.
 
-### GitHub project-site robots.txt detail
+### robots.txt location
 
-The build includes a permissive `robots.txt` and a sitemap reference. On a project site (`username.github.io/repository/`), this file lives at `/repository/robots.txt`. Crawlers use **`/robots.txt` at the origin**, so the project-level file does not control crawling. Check the actual origin's robots file if crawling is blocked; edit it only if you control that root site. Submit the project sitemap directly in Search Console. On a user site or a custom domain served at `/`, the generated robots file is at the correct origin root.
+The current website is served at the origin root, so the generated robots file belongs at `https://rent-split-resources.github.io/robots.txt`. It permits crawling and points to the production sitemap. If you later move to a repository subdirectory, remember that crawlers read robots.txt at the origin root.
 
 ## Content and design
 
@@ -84,18 +86,20 @@ Python builds and checks the static pages; Node runs the calculator arithmetic c
 
 ```powershell
 node --test tests/calculator.test.js
-python build.py --site-url https://YOUR-USERNAME.github.io/YOUR-REPOSITORY
-python tests/check_site.py --site-url https://YOUR-USERNAME.github.io/YOUR-REPOSITORY
+python -m unittest discover -s tests -p "test_*.py"
+python build.py
+python tests/check_site.py --site-url https://rent-split-resources.github.io
 ```
 
-The static checker verifies unique titles and descriptions, canonical URLs, structured-data JSON, every internal link and fragment, all 23 supplied references, the sitemap, and verification tags. The production workflow runs these checks before deploying.
+The static checker verifies unique titles and descriptions, canonical and Open Graph URLs, structured-data URLs, every internal link and fragment, all 23 supplied references, the sitemap, and verification tags. It rejects localhost and loopback URLs. Regression checks also verify the default production address and that previewing preserves production files. The workflow runs these checks before deploying.
 
 An optional browser check is available in `tests/browser_check.py`. It needs Python Playwright with Chromium installed and the local preview server running. It checks responsive layouts, calculator interactions, resource filtering, and content with JavaScript disabled. It saves local screenshots under `.preview/`.
 
 ## Files
 
 ```text
-.github/workflows/deploy.yml   GitHub Pages build, checks, and deployment
+.github/workflows/static.yml   GitHub Pages build, checks, and deployment
+COPY-WORKFLOW.txt              Visible copy for GitHub's file editor
 assets/app.js                  Calculator and resource filters
 assets/style.css               Responsive visual design
 assets/favicon.svg             Local SVG favicon
@@ -105,4 +109,4 @@ preview.py                     Local preview server
 tests/                         Arithmetic, static-output, and optional browser checks
 ```
 
-The project is prepared locally. Publishing requires your GitHub repository; Search Console verification and URL Inspection require access to your Google account. Neither has been performed by this project generator.
+These fixes are prepared locally for upload. The owner reported that the previous version is live; this corrected version has not been uploaded or remotely verified by this session. Search Console verification and URL Inspection require access to your Google account.

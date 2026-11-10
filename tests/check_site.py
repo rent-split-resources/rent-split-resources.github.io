@@ -1,6 +1,7 @@
 """Check crawlable output and deployment URLs without third-party dependencies."""
 import argparse
 from html.parser import HTMLParser
+from ipaddress import ip_address
 import json
 from pathlib import Path
 import sys
@@ -17,6 +18,7 @@ class Page(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.links, self.assets, self.ids, self.schemas = [], [], set(), []
         self.canonicals, self.description, self.robots, self.verification = [], '', '', ''
+        self.og_urls, self.urls = [], []
         self.h1 = 0
         self.title = ''
         self.in_title = self.in_json = False
@@ -25,6 +27,7 @@ class Page(HTMLParser):
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
+        self.urls.extend(a[key] for key in ('href', 'src') if a.get(key))
         if a.get('id'):
             assert a['id'] not in self.ids, f'Duplicate ID: {a["id"]}'
             self.ids.add(a['id'])
@@ -39,6 +42,7 @@ class Page(HTMLParser):
         if tag == 'script' and a.get('src'):
             self.assets.append(a['src'])
         if tag == 'meta':
+            if a.get('property') == 'og:url': self.og_urls.append(a.get('content', ''))
             if a.get('name') == 'description': self.description = a.get('content', '')
             if a.get('name') == 'robots': self.robots = a.get('content', '')
             if a.get('name') == 'google-site-verification': self.verification = a.get('content', '')
@@ -57,8 +61,26 @@ class Page(HTMLParser):
             self.in_json = False
 
 
+def assert_public_urls(value):
+    if isinstance(value, dict):
+        for item in value.values():
+            assert_public_urls(item)
+    elif isinstance(value, list):
+        for item in value:
+            assert_public_urls(item)
+    elif isinstance(value, str) and value.startswith(('http://', 'https://', '//')):
+        hostname = (urlsplit(value).hostname or '').rstrip('.').lower()
+        assert hostname != 'localhost' and not hostname.endswith('.localhost'), f'Localhost URL in production: {value}'
+        try:
+            address = ip_address(hostname)
+        except ValueError:
+            return
+        assert not address.is_loopback and not address.is_unspecified, f'Localhost URL in production: {value}'
+
+
 def check(site_url, directory, verification=''):
     site_url = site_url.rstrip('/')
+    assert_public_urls(site_url)
     base_parts = urlsplit(site_url)
     base_path = base_parts.path.rstrip('/') + '/'
     files = sorted(directory.rglob('*.html'))
@@ -75,6 +97,15 @@ def check(site_url, directory, verification=''):
         assert page.verification == verification, f'{filename}: verification mismatch'
         page_path = filename.removesuffix('index.html') if filename != '404.html' else filename
         current_url = site_url + '/' + page_path
+        assert page.og_urls == [current_url], f'{filename}: wrong Open Graph URL {page.og_urls}'
+        assert_public_urls(page.urls + page.og_urls + page.schemas)
+        for data in page.schemas:
+            for node in data.get('@graph', [data]):
+                if node.get('@type') == 'WebSite':
+                    assert node.get('url') == site_url + '/', f'{filename}: wrong WebSite URL'
+                    assert node.get('@id') == site_url + '/#website', f'{filename}: wrong WebSite ID'
+                elif node.get('@type') in ('Article', 'CollectionPage', 'AboutPage'):
+                    assert node.get('url') == current_url, f'{filename}: wrong structured-data page URL'
         if filename == '404.html':
             assert 'noindex' in page.robots and not page.canonicals, '404 must not be indexable'
         else:
@@ -105,7 +136,7 @@ def check(site_url, directory, verification=''):
     assert len(supplied) == 23, 'Expected all 23 supplied references'
     assert supplied <= set(pages['resources/index.html'].links), 'A supplied reference is missing from static HTML'
     assert (directory / '.nojekyll').exists()
-    print(f'PASS: {len(expected_urls)} indexable pages, 404, metadata, JSON-LD, all internal links, all 23 external references, sitemap, and verification tag.')
+    print(f'PASS: {len(expected_urls)} indexable pages, 404, canonical and Open Graph URLs, JSON-LD, internal links, all 23 references, sitemap, verification tag, and no localhost URLs.')
 
 
 if __name__ == '__main__':

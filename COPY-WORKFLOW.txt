@@ -1,0 +1,65 @@
+name: Build and deploy GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  SITE_URL: https://rent-split-resources.github.io
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Set up Node for calculator checks
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check calculator arithmetic
+        run: node --test tests/calculator.test.js
+      - name: Check production URLs and preview isolation
+        run: python -m unittest discover -s tests -p 'test_*.py'
+      - name: Configure GitHub Pages
+        id: pages
+        uses: actions/configure-pages@v5
+      - name: Build and verify production pages
+        env:
+          GOOGLE_SITE_VERIFICATION: ${{ vars.GOOGLE_SITE_VERIFICATION }}
+        run: |
+          python build.py --site-url "$SITE_URL" --verification "$GOOGLE_SITE_VERIFICATION"
+          python tests/check_site.py --site-url "$SITE_URL" --verification "$GOOGLE_SITE_VERIFICATION"
+      - name: Upload the built site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
