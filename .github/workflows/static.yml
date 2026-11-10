@@ -12,6 +12,9 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
+env:
+  SITE_URL: https://rent-split-resources.github.io
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -31,12 +34,13 @@ jobs:
           node-version: '22'
       - name: Check calculator arithmetic
         run: node --test tests/calculator.test.js
-      - name: Read the actual GitHub Pages address
+      - name: Check production URLs and preview isolation
+        run: python -m unittest discover -s tests -p 'test_*.py'
+      - name: Configure GitHub Pages
         id: pages
         uses: actions/configure-pages@v5
       - name: Build and verify production pages
         env:
-          SITE_URL: ${{ steps.pages.outputs.base_url }}
           GOOGLE_SITE_VERIFICATION: ${{ vars.GOOGLE_SITE_VERIFICATION }}
         run: |
           python build.py --site-url "$SITE_URL" --verification "$GOOGLE_SITE_VERIFICATION"
