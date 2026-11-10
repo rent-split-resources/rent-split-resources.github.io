@@ -1,0 +1,33 @@
+<?xml version='1.0' encoding='utf-8'?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>http://localhost:8000/</loc>
+  </url>
+  <url>
+    <loc>http://localhost:8000/guides/</loc>
+  </url>
+  <url>
+    <loc>http://localhost:8000/guides/how-to-split-rent-fairly/</loc>
+  </url>
+  <url>
+    <loc>http://localhost:8000/guides/split-rent-by-room-size/</loc>
+  </url>
+  <url>
+    <loc>http://localhost:8000/guides/couples-and-shared-rooms/</loc>
+  </url>
+  <url>
+    <loc>http://localhost:8000/guides/split-utilities-and-shared-bills/</loc>
+  </url>
+  <url>
+    <loc>http://localhost:8000/guides/split-restaurant-bill-tax-tip/</loc>
+  </url>
+  <url>
+    <loc>http://localhost:8000/guides/divide-a-rent-increase/</loc>
+  </url>
+  <url>
+    <loc>http://localhost:8000/resources/</loc>
+  </url>
+  <url>
+    <loc>http://localhost:8000/about/</loc>
+  </url>
+</urlset>
