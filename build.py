@@ -5,6 +5,7 @@ import argparse
 import html
 import json
 from pathlib import Path
+import re
 import shutil
 from urllib.parse import urlsplit
 import xml.etree.ElementTree as ET
@@ -175,6 +176,12 @@ def build(site_url: str, verification: str = "", output: Path | None = None) -> 
     # Never clear an arbitrary output directory; overwrite only generated files.
     OUT.mkdir(parents=True, exist_ok=True)
     shutil.copytree(PROJECT / 'assets', OUT / 'assets', dirs_exist_ok=True)
+    # Search Console checks the original file at the public site root.
+    for verification_file in PROJECT.glob('google*.html'):
+        if verification_file.is_file() and re.fullmatch(r'google[0-9a-f]+\.html', verification_file.name):
+            target = OUT / verification_file.name
+            if verification_file.resolve() != target.resolve():
+                shutil.copyfile(verification_file, target)
     pages: list[str] = []
 
     def write_page(path: str, title: str, description: str, body: str, section: str = '', data: dict | None = None, noindex: bool = False) -> None:
